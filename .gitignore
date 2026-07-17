@@ -1,0 +1,33 @@
+# Local-only AI assistant context — never tracked
+AI.md
+
+# Local-only project config — never tracked
+config/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node (web app)
+node_modules/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Real customer documents (only test fixtures may be committed)
+*.pdf
+!tests/fixtures/**/*.pdf
