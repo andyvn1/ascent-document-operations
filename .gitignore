@@ -8,6 +8,8 @@ config/
 # tracked (repo may go public)
 docs/business/
 docs/architecture/decisions/
+docs/architecture/database-design.md
+docs/architecture/api-specification.md
 docs/learning/
 
 # Environment / secrets
