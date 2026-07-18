@@ -2,7 +2,9 @@
 
 > Draft v0.1. Scope is derived from `docs/product/product-vision.md` and the
 > master plan. `[ASSUMPTION]` marks anything worth double-checking against
-> pilot-customer reality once TASK-002's interviews happen.
+> pilot-customer reality once a real pilot conversation happens (see
+> `docs/business/market-research.md` for the desk-research findings used
+> instead of live interviews for now).
 
 ## MVP features (in scope)
 
@@ -120,7 +122,8 @@ The MVP is done when:
 
 - Is CSV + generic webhook actually sufficient for a first pilot, or does
   the pilot customer need a specific integration to consider this usable?
-  (Depends on TASK-002 interview answers about their accounting/PM
+  (Desk research didn't settle this — see `docs/business/market-research.md`
+  open questions; still depends on a real prospect's accounting/PM
   software.)
 - Does NFR4's latency target need to be stricter if a reviewer processes
   documents in a batch, waiting on several at once?

@@ -1,7 +1,8 @@
 # Customer Persona — Ascent Document Operations
 
-> Draft v0.1. Assumptions below are marked `[ASSUMPTION]` — confirm or correct
-> before this feeds Day 2 (customer interviews) or any architecture decision.
+> Draft v0.1. Assumptions below are marked `[ASSUMPTION]` — confirm or
+> correct against `docs/business/market-research.md` (desk research) or a
+> real pilot conversation before this feeds any architecture decision.
 
 ## Who
 
@@ -71,13 +72,16 @@ a human retyping a PDF.
 
 ---
 
-## Open questions for Day 2 customer interviews
+## Open questions (see `docs/business/market-research.md`)
 
 - Is the $2M–$50M revenue band correct, or does the pain look different at a
-  smaller/larger scale?
+  smaller/larger scale? Desk research confirms the segment broadly, not this
+  specific band.
 - Who actually keys in the data today — is it always an office
   manager/bookkeeper, or does it vary by company size?
 - How many invoices/change orders per week is typical? This determines
   whether the ROI story is "saves an hour a day" or "saves a full-time role."
 - What accounting/ERP system(s) do they already use? This affects the export
-  integration priority list.
+  integration priority list. inBuild's reviewed customers are already
+  QuickBooks-integrated, which may not represent the less-tooled segment
+  Ascent is targeting.
