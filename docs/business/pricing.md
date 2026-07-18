@@ -2,7 +2,7 @@
 
 > Draft v0.2 — now grounded in real competitor pricing data (below), but the
 > tier boundaries and feature split are still `[ASSUMPTION]`s to sanity-check
-> against real interview answers (`docs/business/customer-interviews.md`) and
+> against the desk research findings (`docs/business/market-research.md`) and
 > against what a pilot customer actually says they'd pay.
 
 ## Competitive landscape

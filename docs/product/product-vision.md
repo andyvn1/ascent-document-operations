@@ -59,8 +59,8 @@ must not block, but none of them are in scope for the MVP.
 
 ## Success looks like (first pilot)
 
-`[ASSUMPTION — confirm after Day 2 interviews]` A pilot customer processing
-at least 20–30 invoices/change orders per week can:
+`[ASSUMPTION — confirm against a real pilot customer]` A pilot customer
+processing at least 20–30 invoices/change orders per week can:
 
 - Cut manual data-entry time on those documents by more than half.
 - Catch at least one error (duplicate invoice, missing approval, mismatched
@@ -74,4 +74,4 @@ paper-heavy, deadline-driven, and painful enough that a narrow, reliable tool
 beats a broad, generic one. Winning a narrow niche first (invoices + change
 orders for construction) is deliberately chosen over a horizontal "AI
 document processor" positioning, because a specific customer can be found,
-interviewed, and sold to — a generic one can't.
+understood, and sold to — a generic one can't.
