@@ -39,7 +39,7 @@
 - **No accounting/ERP integrations beyond CSV + generic webhook** — no
   QuickBooks/Sage/Procore-specific adapters in the MVP. A mock accounting
   integration exists to prove the adapter interface, not a real one.
-- **No local/DGX inference** — cloud AI providers only until the cloud MVP
+- **No local AI inference** — cloud AI providers only until the cloud MVP
   is proven (master plan §4, §13).
 - **No other document types** — no purchase orders, quotes, inspection
   reports, receipts, or delivery documents, even though the persona
@@ -93,7 +93,7 @@
   mocked in unit tests; integration tests may hit real local
   infrastructure (e.g. a test database) but not real paid APIs.
 - NFR6 (Portability): AI inference is accessed only through the
-  `AIProvider` protocol, so a future local/DGX provider can be substituted
+  `AIProvider` protocol, so a future local AI provider can be substituted
   without changing business logic (master plan §4, §13).
 
 ## MVP acceptance criteria

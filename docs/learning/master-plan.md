@@ -17,7 +17,7 @@ My goals are:
 4. Automate my project management.
 5. Automatically create GitHub Issues for every development task.
 6. Initially run the application using cloud services.
-7. Eventually move suitable AI inference workloads to an NVIDIA DGX Spark running from my home.
+7. Eventually move suitable AI inference workloads to a local AI server.
 
 Do not only generate code for me. Teach me how the system works while we build it incrementally.
 
@@ -215,7 +215,7 @@ The first implementation must remain focused on construction invoices and change
 
 ---
 
-# 4. Cloud-First and Home-Server Strategy
+# 4. Cloud-First and Local AI Strategy
 
 The system must initially work entirely with cloud services.
 
@@ -248,9 +248,9 @@ Initially use cloud AI APIs for:
 * Embeddings
 * Document search
 
-Later, allow suitable AI workloads to move to an NVIDIA DGX Spark at my home.
+Later, allow suitable AI workloads to move to a local AI server.
 
-Possible DGX Spark workloads:
+Possible local AI workloads:
 
 * Document classification
 * Structured extraction
@@ -261,9 +261,9 @@ Possible DGX Spark workloads:
 * Batch evaluation
 * Local model inference
 
-Do not move the public application, authentication, database, or critical customer-facing services to the home server.
+Do not move the public application, authentication, database, or critical customer-facing services to the local server.
 
-The DGX Spark should operate as a private inference worker connected securely to the cloud application.
+The local AI server should operate as a private inference worker connected securely to the cloud application.
 
 The system must support:
 
@@ -453,7 +453,7 @@ By completing the project, I should understand:
 * Secret management
 * Threat modeling
 * Data retention
-* Home-server security risks
+* Local server security risks
 
 ## Project automation
 
@@ -504,7 +504,7 @@ Goals:
 * Define non-goals
 * Define system boundaries
 * Design cloud architecture
-* Design the future DGX architecture
+* Design the future local AI architecture
 * Define acceptance criteria
 
 Deliverables:
@@ -517,7 +517,7 @@ Deliverables:
 * Threat model
 * API specification
 * Database design
-* Cloud-to-DGX migration plan
+* Cloud-to-local-AI migration plan
 
 ## Project 3: Project Management Automation
 
@@ -754,7 +754,7 @@ Deliverables:
 * Deployment guide
 * Rollback guide
 
-## Project 13: DGX Spark Migration
+## Project 13: Local AI Migration
 
 This project must happen after the cloud MVP works.
 
@@ -838,7 +838,7 @@ Create the first detailed plan around these 30 business days.
 
 * Create the cloud architecture
 * Define system boundaries
-* Define the future DGX Spark role
+* Define the future local AI role
 * Create architecture diagrams
 * Start architecture decision records
 
@@ -1251,7 +1251,7 @@ Decisions must include:
 * AI provider abstraction
 * Human approval
 * Cloud-first architecture
-* DGX Spark worker architecture
+* Local AI worker architecture
 * Cloud fallback
 * GitHub duplicate prevention
 
@@ -1385,7 +1385,7 @@ docs/
 │   ├── database-design.md
 │   ├── ai-provider-design.md
 │   ├── synchronization-design.md
-│   └── dgx-migration-plan.md
+│   └── local-ai-migration-plan.md
 ├── business/
 │   ├── pricing.md
 │   ├── customer-interviews.md
@@ -1406,7 +1406,7 @@ docs/
     ├── testing-concepts.md
     ├── devops-concepts.md
     ├── github-api-guide.md
-    ├── dgx-spark-guide.md
+    ├── local-ai-guide.md
     └── interview-review-guide.md
 ```
 
@@ -1424,7 +1424,7 @@ The interview guide should help explain:
 * Testing
 * Failure handling
 * Cloud deployment
-* DGX Spark migration
+* Local AI migration
 * Tradeoffs
 * Lessons learned
 
@@ -1467,6 +1467,6 @@ The final outcome must be:
 
 1. A complete GitHub Issue backlog.
 2. A cloud-first AI document automation MVP.
-3. A future path to DGX Spark inference.
+3. A future path to local AI inference.
 4. A portfolio-quality software project.
 5. A structured learning experience that allows Andy to understand and explain what he built.
