@@ -17,6 +17,9 @@ class Settings(BaseSettings):
 
     app_env: Literal["development", "staging", "production"] = "development"
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
+    database_url: str = (
+        "postgresql+psycopg://ascent:ascent@localhost:5433/ascent"
+    )
 
 
 @lru_cache
