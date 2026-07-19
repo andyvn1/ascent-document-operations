@@ -8,6 +8,9 @@ dependencies = [
     "uvicorn[standard]>=0.32",
     "pydantic>=2.7",
     "pydantic-settings>=2.5",
+    "sqlalchemy>=2.0",
+    "alembic>=1.13",
+    "psycopg[binary]>=3.1",
 ]
 
 [dependency-groups]
@@ -31,6 +34,7 @@ packages = ["src/ascent", "apps"]
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+extend-exclude = ["alembic/versions"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "S"]
@@ -42,6 +46,7 @@ select = ["E", "F", "I", "UP", "B", "S"]
 python_version = "3.12"
 strict = true
 mypy_path = "src"
+exclude = ["alembic/versions"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src", "."]
