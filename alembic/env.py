@@ -7,6 +7,7 @@ from alembic import context
 # Import models so they register on Base.metadata before autogenerate
 # inspects it — importing db.Base alone isn't enough, since a model
 # module that's never imported never runs its class body.
+from ascent.documents import models as documents_models  # noqa: F401
 from ascent.shared import models  # noqa: F401
 from ascent.shared.config import get_settings
 from ascent.shared.db import Base
