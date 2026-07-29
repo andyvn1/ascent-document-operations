@@ -54,12 +54,26 @@ class Document(Base):
     original_filename: Mapped[str] = mapped_column(String, nullable=False)
     storage_key: Mapped[str] = mapped_column(String, nullable=False)
     document_type: Mapped[DocumentType] = mapped_column(
-        SqlEnum(DocumentType, native_enum=False, length=20),
+        SqlEnum(
+            DocumentType,
+            name="document_type_enum",
+            native_enum=False,
+            create_constraint=True,
+            length=20,
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+        ),
         nullable=False,
         default=DocumentType.UNRECOGNIZED,
     )
     status: Mapped[DocumentStatus] = mapped_column(
-        SqlEnum(DocumentStatus, native_enum=False, length=20),
+        SqlEnum(
+            DocumentStatus,
+            name="document_status_enum",
+            native_enum=False,
+            create_constraint=True,
+            length=20,
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+        ),
         nullable=False,
         default=DocumentStatus.UPLOADED,
     )

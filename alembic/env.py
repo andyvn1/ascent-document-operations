@@ -4,11 +4,9 @@ from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 
-# Import models so they register on Base.metadata before autogenerate
-# inspects it — importing db.Base alone isn't enough, since a model
-# module that's never imported never runs its class body.
-from ascent.documents import models as documents_models  # noqa: F401
-from ascent.shared import models  # noqa: F401
+# Import model_registry so every model registers on Base.metadata
+# before autogenerate inspects it — see model_registry.py for why.
+from ascent.shared import model_registry  # noqa: F401
 from ascent.shared.config import get_settings
 from ascent.shared.db import Base
 
