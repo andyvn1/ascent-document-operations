@@ -1,0 +1,3 @@
+This is a plain text file, not a PDF or an image. It should be rejected
+by the upload endpoint's content-sniffing validation, even if someone
+renames it to have a .pdf extension.

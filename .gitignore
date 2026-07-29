@@ -39,3 +39,6 @@ Thumbs.db
 # Real customer documents (only test fixtures may be committed)
 *.pdf
 !tests/fixtures/**/*.pdf
+
+# Local file storage backend — uploaded file content, not source
+storage/

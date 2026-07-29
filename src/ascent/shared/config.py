@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     database_url: str = (
         "postgresql+psycopg://ascent:ascent@localhost:5433/ascent"
     )
+    storage_dir: str = "./storage/uploads"
+    max_upload_size_bytes: int = 10 * 1024 * 1024
 
 
 @lru_cache
