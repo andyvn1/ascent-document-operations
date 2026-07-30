@@ -11,38 +11,15 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import Engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from apps.api.main import app
 from apps.api.routes.documents import get_storage
 from ascent.documents.storage import LocalFileStorage
-from ascent.shared.db import get_db, make_engine
+from ascent.shared.db import get_db
 from ascent.shared.models import Tenant, User
 
 FIXTURES = Path(__file__).parent.parent / "fixtures"
-
-
-@pytest.fixture(scope="module")
-def engine() -> Generator[Engine, None, None]:
-    engine = make_engine()
-    yield engine
-    engine.dispose()
-
-
-@pytest.fixture
-def db_session(engine: Engine) -> Generator[Session, None, None]:
-    connection = engine.connect()
-    transaction = connection.begin()
-    session_factory = sessionmaker(bind=connection)
-    session = session_factory()
-
-    yield session
-
-    session.close()
-    if transaction.is_active:
-        transaction.rollback()
-    connection.close()
 
 
 @pytest.fixture

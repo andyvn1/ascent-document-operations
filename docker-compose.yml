@@ -31,5 +31,20 @@ services:
       - /app/.venv
     command: uv run uvicorn apps.api.main:app --host 0.0.0.0 --port 8000 --reload
 
+  worker:
+    build: .
+    environment:
+      - APP_ENV=development
+      - LOG_LEVEL=DEBUG
+      - DATABASE_URL=postgresql+psycopg://ascent:ascent@db:5432/ascent
+      - STORAGE_DIR=/app/storage/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - /app/.venv
+    command: uv run python -m apps.worker.main
+
 volumes:
   postgres_data:

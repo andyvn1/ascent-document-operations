@@ -5,11 +5,8 @@ Each test runs inside a transaction that's rolled back afterward, so
 tests don't leave rows behind or depend on run order.
 """
 
-from collections.abc import Generator
-
 import pytest
-from sqlalchemy import Engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from ascent.documents.models import DocumentStatus
 from ascent.documents.repository import (
@@ -18,30 +15,7 @@ from ascent.documents.repository import (
     list_audit_events,
     transition_status,
 )
-from ascent.shared.db import make_engine
 from ascent.shared.models import Tenant, User
-
-
-@pytest.fixture(scope="module")
-def engine() -> Generator[Engine, None, None]:
-    engine = make_engine()
-    yield engine
-    engine.dispose()
-
-
-@pytest.fixture
-def db_session(engine: Engine) -> Generator[Session, None, None]:
-    connection = engine.connect()
-    transaction = connection.begin()
-    session_factory = sessionmaker(bind=connection)
-    session = session_factory()
-
-    yield session
-
-    session.close()
-    if transaction.is_active:
-        transaction.rollback()
-    connection.close()
 
 
 @pytest.fixture
