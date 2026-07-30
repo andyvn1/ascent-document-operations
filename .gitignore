@@ -4,12 +4,10 @@ AI.md
 # Local-only project config — never tracked
 config/
 
-# Business/pricing docs, ADRs, and learning/master-plan docs — never
-# tracked (repo may go public)
+# Business/pricing docs and learning/master-plan docs — never tracked
+# (repo is public; ADRs and architecture docs are public, this stays
+# private since it's competitive/pricing research, not architecture)
 docs/business/
-docs/architecture/decisions/
-docs/architecture/database-design.md
-docs/architecture/api-specification.md
 docs/learning/
 
 # Environment / secrets
