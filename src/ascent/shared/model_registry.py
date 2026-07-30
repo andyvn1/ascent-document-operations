@@ -11,4 +11,5 @@ model modules are added.
 """
 
 from ascent.documents import models as _documents_models  # noqa: F401
+from ascent.jobs import models as _jobs_models  # noqa: F401
 from ascent.shared import models as _shared_models  # noqa: F401

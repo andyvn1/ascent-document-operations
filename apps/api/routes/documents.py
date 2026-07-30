@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 
 from ascent.documents.repository import create_document
 from ascent.documents.storage import LocalFileStorage, ObjectStorage
+from ascent.jobs.queue import enqueue
 from ascent.shared.config import Settings, get_settings
 from ascent.shared.db import get_db
 
@@ -79,6 +80,10 @@ async def upload_document(
         original_filename=file.filename or "unknown",
         storage_key=storage_key,
     )
+    # Enqueued in the same transaction as the document itself: either
+    # both are saved together, or (on any earlier failure) neither is --
+    # there's no window where a document exists with no processing job.
+    enqueue(db, job_type="process_document", payload={"document_id": str(document.id)})
     db.commit()
 
     return {"id": str(document.id), "status": document.status.value}
