@@ -1,24 +1,15 @@
-"""Document upload endpoint.
-
-tenant_id/uploaded_by_user_id are accepted as explicit form fields for
-now, since there is no authentication yet. TASK-015 adds an auth
-placeholder and tenant authorization, which will derive these from the
-authenticated request context instead of trusting client-supplied
-values — see docs/architecture/api-specification.md ("the tenant is
-derived from the auth context, never from a client-supplied
-parameter"). This endpoint is a deliberate, temporary simplification
-until that lands.
-"""
+"""Document upload endpoint."""
 
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from ascent.documents.repository import create_document
 from ascent.documents.storage import LocalFileStorage, ObjectStorage
 from ascent.jobs.queue import enqueue
+from ascent.security.tenancy import AuthContext, get_current_actor
 from ascent.shared.config import Settings, get_settings
 from ascent.shared.db import get_db
 
@@ -51,8 +42,7 @@ def get_storage(settings: Annotated[Settings, Depends(get_settings)]) -> ObjectS
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def upload_document(
     file: UploadFile,
-    tenant_id: Annotated[uuid.UUID, Form()],
-    uploaded_by_user_id: Annotated[uuid.UUID, Form()],
+    actor: Annotated[AuthContext, Depends(get_current_actor)],
     settings: Annotated[Settings, Depends(get_settings)],
     storage: Annotated[ObjectStorage, Depends(get_storage)],
     db: Annotated[Session, Depends(get_db)],
@@ -70,13 +60,13 @@ async def upload_document(
             detail="Only PDF and image (JPEG/PNG) files are accepted",
         )
 
-    storage_key = f"{tenant_id}/{uuid.uuid4()}_{file.filename or 'upload'}"
+    storage_key = f"{actor.tenant_id}/{uuid.uuid4()}_{file.filename or 'upload'}"
     storage.save(key=storage_key, content=content)
 
     document = create_document(
         db,
-        tenant_id=tenant_id,
-        uploaded_by_user_id=uploaded_by_user_id,
+        tenant_id=actor.tenant_id,
+        uploaded_by_user_id=actor.user_id,
         original_filename=file.filename or "unknown",
         storage_key=storage_key,
     )

@@ -5,6 +5,7 @@ compose up db, then alembic upgrade head, before running these).
 
 import shutil
 import tempfile
+import uuid
 from collections.abc import Generator
 from io import BytesIO
 from pathlib import Path
@@ -58,10 +59,7 @@ def test_upload_pdf_succeeds(client: TestClient, uploader: User) -> None:
         response = client.post(
             "/api/v1/documents",
             files={"file": ("invoice.pdf", f, "application/pdf")},
-            data={
-                "tenant_id": str(uploader.tenant_id),
-                "uploaded_by_user_id": str(uploader.id),
-            },
+            headers={"X-User-Id": str(uploader.id)},
         )
 
     assert response.status_code == 201
@@ -73,10 +71,7 @@ def test_upload_image_succeeds(client: TestClient, uploader: User) -> None:
         response = client.post(
             "/api/v1/documents",
             files={"file": ("photo.png", f, "image/png")},
-            data={
-                "tenant_id": str(uploader.tenant_id),
-                "uploaded_by_user_id": str(uploader.id),
-            },
+            headers={"X-User-Id": str(uploader.id)},
         )
 
     assert response.status_code == 201
@@ -91,10 +86,7 @@ def test_upload_rejects_content_that_is_not_pdf_or_image(
             # Claims to be a PDF via filename/content-type — the endpoint
             # must catch this by sniffing actual content, not trust either.
             files={"file": ("fake.pdf", f, "application/pdf")},
-            data={
-                "tenant_id": str(uploader.tenant_id),
-                "uploaded_by_user_id": str(uploader.id),
-            },
+            headers={"X-User-Id": str(uploader.id)},
         )
 
     assert response.status_code == 415
@@ -105,13 +97,31 @@ def test_upload_rejects_oversized_file(client: TestClient, uploader: User) -> No
     response = client.post(
         "/api/v1/documents",
         files={"file": ("big.pdf", BytesIO(oversized_content), "application/pdf")},
-        data={
-            "tenant_id": str(uploader.tenant_id),
-            "uploaded_by_user_id": str(uploader.id),
-        },
+        headers={"X-User-Id": str(uploader.id)},
     )
 
     assert response.status_code == 413
+
+
+def test_upload_without_auth_header_is_rejected(client: TestClient) -> None:
+    with (FIXTURES / "sample-invoice.pdf").open("rb") as f:
+        response = client.post(
+            "/api/v1/documents",
+            files={"file": ("invoice.pdf", f, "application/pdf")},
+        )
+
+    assert response.status_code == 401
+
+
+def test_upload_with_unknown_user_id_is_rejected(client: TestClient) -> None:
+    with (FIXTURES / "sample-invoice.pdf").open("rb") as f:
+        response = client.post(
+            "/api/v1/documents",
+            files={"file": ("invoice.pdf", f, "application/pdf")},
+            headers={"X-User-Id": str(uuid.uuid4())},
+        )
+
+    assert response.status_code == 401
 
 
 _PDF_MAGIC_FOR_TEST = b"%PDF-"

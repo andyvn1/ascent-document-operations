@@ -53,7 +53,7 @@ def test_run_once_advances_document_through_processing_to_extracted(
     assert refreshed_job is not None
     assert refreshed_job.status == JobStatus.SUCCEEDED
 
-    events = list_audit_events(db_session, document.id)
+    events = list_audit_events(db_session, tenant_id=document.tenant_id, document_id=document.id)
     assert [e.event_type for e in events] == ["uploaded", "processing", "extracted"]
 
 
@@ -78,13 +78,17 @@ def test_reprocessing_an_already_extracted_document_is_a_no_op(
 
     process_document_job(db_session, job)
     db_session.commit()
-    events_after_first_run = list_audit_events(db_session, document.id)
+    events_after_first_run = list_audit_events(
+        db_session, tenant_id=document.tenant_id, document_id=document.id
+    )
 
     # Call the handler again directly -- simulates a job being
     # redelivered/retried after it already succeeded.
     process_document_job(db_session, job)
     db_session.commit()
-    events_after_second_run = list_audit_events(db_session, document.id)
+    events_after_second_run = list_audit_events(
+        db_session, tenant_id=document.tenant_id, document_id=document.id
+    )
 
     assert len(events_after_first_run) == 3
     assert events_after_second_run == events_after_first_run

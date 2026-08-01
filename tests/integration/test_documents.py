@@ -45,7 +45,7 @@ def test_create_document_starts_uploaded_with_audit_event(
     assert document.status == DocumentStatus.UPLOADED
     assert document.tenant_id == uploader.tenant_id
 
-    events = list_audit_events(db_session, document.id)
+    events = list_audit_events(db_session, tenant_id=document.tenant_id, document_id=document.id)
     assert len(events) == 1
     assert events[0].event_type == "uploaded"
     assert events[0].tenant_id == uploader.tenant_id
@@ -69,7 +69,7 @@ def test_valid_transition_updates_status_and_records_event(
 
     assert document.status == DocumentStatus.PROCESSING
 
-    events = list_audit_events(db_session, document.id)
+    events = list_audit_events(db_session, tenant_id=document.tenant_id, document_id=document.id)
     assert [e.event_type for e in events] == ["uploaded", "processing"]
     assert events[1].event_data == {"from": "uploaded", "to": "processing"}
 
@@ -90,7 +90,7 @@ def test_invalid_transition_is_rejected_and_leaves_no_new_event(
         transition_status(db_session, document, new_status=DocumentStatus.APPROVED)
 
     assert document.status == DocumentStatus.UPLOADED
-    events = list_audit_events(db_session, document.id)
+    events = list_audit_events(db_session, tenant_id=document.tenant_id, document_id=document.id)
     assert len(events) == 1
 
 
