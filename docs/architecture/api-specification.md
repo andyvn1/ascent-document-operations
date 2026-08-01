@@ -161,3 +161,32 @@ API shape — correctly out of scope for this task.
 **Non-goals check:** nothing designed here adds email intake, ERP-specific
 integrations, local AI inference, other document types, or billing —
 consistent with `requirements.md`'s non-goals list.
+
+---
+
+## Week 3 review against `docs/product/requirements.md`
+
+Checking Week 3's output (Postgres + migrations + tenant/user models,
+document/audit models, the upload endpoint, the job queue/worker, and the
+auth placeholder/tenant scoping added this task) against the requirements
+this phase was meant to satisfy:
+
+| Requirement | Addressed by |
+|---|---|
+| FR1 upload → appear in a processing queue | `POST /api/v1/documents` creates the `Document` row and enqueues a `jobs` row in the same transaction |
+| FR10 all data access scoped to the authenticated tenant | `get_current_actor` derives `tenant_id` from a verified `User` lookup (never a client-supplied value); `list_audit_events` now requires `tenant_id` as a mandatory, keyword-only filter |
+| NFR1 failed jobs retry with backoff | `apps/worker/main.py` + `jobs/queue.py` (`fail_job`, exponential backoff, max-attempts) — built in TASK-014 |
+| NFR2 upload validation; secrets via env | content-sniffing (`_detect_content_type`) + size limit in `documents.py`; `Settings` loads from environment (TASK-010) |
+| NFR3 append-only audit | `AuditEvent`/`_record_event` — no update/delete path (TASK-012) |
+| NFR5 mockable external services, real DB in integration tests | integration tests hit a real test Postgres via `conftest.py`'s SAVEPOINT fixture; no paid API calls exist yet to mock |
+
+**Gap closed this task:** the authentication placeholder was the one
+concrete gap flagged back in the Week 1 review (FR10 depended on an
+auth-derived tenant context that didn't exist yet). `test_upload_flow.py`
+now also proves an unauthenticated request produces zero side effects
+(no `Document` row, no `Job` row) rather than only checking the HTTP
+status code.
+
+**Carried forward, not blocking Week 3 close-out:** FR2–FR9 (classification,
+extraction, review, export, webhooks) are Week 4–6 scope, not Week 3's —
+correctly out of scope here.

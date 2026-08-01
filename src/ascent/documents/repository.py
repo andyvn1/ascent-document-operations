@@ -99,10 +99,12 @@ def transition_status(
     return document
 
 
-def list_audit_events(session: Session, document_id: uuid.UUID) -> list[AuditEvent]:
+def list_audit_events(
+    session: Session, *, tenant_id: uuid.UUID, document_id: uuid.UUID
+) -> list[AuditEvent]:
     return list(
         session.query(AuditEvent)
-        .filter(AuditEvent.document_id == document_id)
+        .filter(AuditEvent.tenant_id == tenant_id, AuditEvent.document_id == document_id)
         .order_by(AuditEvent.created_at)
         .all()
     )
