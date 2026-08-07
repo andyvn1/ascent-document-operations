@@ -1,14 +1,6 @@
-# Local-only AI assistant context — never tracked
-AI.md
-
-# Local-only project config — never tracked
-config/
-
-# Business/pricing docs and learning/master-plan docs — never tracked
-# (repo is public; ADRs and architecture docs are public, this stays
-# private since it's competitive/pricing research, not architecture)
-docs/business/
-docs/learning/
+# Private notes/context (business docs, AI.md, task config) — never tracked
+# (repo is public; this folder holds everything that must stay off GitHub)
+ascent-private-files/
 
 # Environment / secrets
 .env

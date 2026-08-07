@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     )
     storage_dir: str = "./storage/uploads"
     max_upload_size_bytes: int = 10 * 1024 * 1024
+    ai_provider: Literal["mock", "cloud"] = "mock"
 
 
 @lru_cache
