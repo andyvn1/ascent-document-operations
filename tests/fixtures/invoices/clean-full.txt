@@ -1,0 +1,29 @@
+RIVERBEND BUILDING SUPPLY
+4821 Industrial Pkwy, Fort Worth, TX 76106
+AP@riverbendsupply.example
+
+INVOICE
+
+Invoice #: RB-20458
+Invoice Date: 2026-06-02
+Due Date: 2026-07-02
+Payment Terms: Net 30
+
+Bill To: Ascent General Contracting
+Project: Maple Street Townhomes
+PO Number: PO-7734
+
+Line Items
+--------------------------------------------------------------
+Description                 Qty   Unit Price   Cost Code
+--------------------------------------------------------------
+Ready-mix concrete, 4000psi  20     165.00       03-300
+Rebar, #4 grade 60           500      1.10       03-200
+Concrete forming lumber      150      8.50        06-100
+--------------------------------------------------------------
+
+Subtotal:            5125.00
+Tax (8.25%):           422.81
+Total Due:           5547.81
+
+Currency: USD

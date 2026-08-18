@@ -1,0 +1,19 @@
+Cascade Roofing & Sheet Metal
+1190 Foothill Rd, Bend, OR 97701
+
+INVOICE #CR-3391
+Invoice Date: 2026-04-20
+Due Date: 2026-05-20
+Payment Terms: Net 30
+Project: Cedar Ridge Apartments Phase 2
+PO Number: PO-5510
+
+Description                       Qty   Unit Price   Cost Code
+Standing seam metal roofing        40      95.00      07-600
+Ridge cap flashing                 60       6.50      07-620
+
+Subtotal:    4190.00
+Tax:          335.20
+Total:       4700.00
+
+Currency: USD
