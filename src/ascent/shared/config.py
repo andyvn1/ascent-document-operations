@@ -23,6 +23,11 @@ class Settings(BaseSettings):
     storage_dir: str = "./storage/uploads"
     max_upload_size_bytes: int = 10 * 1024 * 1024
     ai_provider: Literal["mock", "cloud"] = "mock"
+    openai_api_key: str | None = None
+    ai_text_model: str = "gpt-5-nano"
+    ai_embedding_model: str = "text-embedding-3-small"
+    ai_max_retries: int = 3
+    ai_timeout_seconds: float = 30.0
 
 
 @lru_cache
