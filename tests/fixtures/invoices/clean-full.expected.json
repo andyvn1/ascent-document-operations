@@ -1,0 +1,34 @@
+{
+  "vendor_name": "Riverbend Building Supply",
+  "invoice_number": "RB-20458",
+  "invoice_date": "2026-06-02",
+  "due_date": "2026-07-02",
+  "project_name": "Maple Street Townhomes",
+  "customer_name": "Ascent General Contracting",
+  "po_number": "PO-7734",
+  "subtotal": 5125.00,
+  "tax": 422.81,
+  "total": 5547.81,
+  "currency": "USD",
+  "payment_terms": "Net 30",
+  "line_items": [
+    {
+      "description": "Ready-mix concrete, 4000psi",
+      "quantity": 20,
+      "unit_price": 165.00,
+      "cost_code": "03-300"
+    },
+    {
+      "description": "Rebar, #4 grade 60",
+      "quantity": 500,
+      "unit_price": 1.10,
+      "cost_code": "03-200"
+    },
+    {
+      "description": "Concrete forming lumber",
+      "quantity": 150,
+      "unit_price": 8.50,
+      "cost_code": "06-100"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+Sunrise Electrical Contractors
+Invoice
+
+Invoice No: SEC-9012
+Date: 2026-05-14
+
+Description: Panel upgrade and rough-in wiring, Unit 4B
+
+Subtotal: 2100.00
+Tax: 168.00
+Total: 2268.00
+Currency: USD
+
+Please remit payment upon receipt.

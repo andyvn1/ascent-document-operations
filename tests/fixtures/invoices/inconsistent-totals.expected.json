@@ -1,0 +1,28 @@
+{
+  "vendor_name": "Cascade Roofing & Sheet Metal",
+  "invoice_number": "CR-3391",
+  "invoice_date": "2026-04-20",
+  "due_date": "2026-05-20",
+  "project_name": "Cedar Ridge Apartments Phase 2",
+  "customer_name": null,
+  "po_number": "PO-5510",
+  "subtotal": 4190.00,
+  "tax": 335.20,
+  "total": 4700.00,
+  "currency": "USD",
+  "payment_terms": "Net 30",
+  "line_items": [
+    {
+      "description": "Standing seam metal roofing",
+      "quantity": 40,
+      "unit_price": 95.00,
+      "cost_code": "07-600"
+    },
+    {
+      "description": "Ridge cap flashing",
+      "quantity": 60,
+      "unit_price": 6.50,
+      "cost_code": "07-620"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "vendor_name": "Sunrise Electrical Contractors",
+  "invoice_number": "SEC-9012",
+  "invoice_date": "2026-05-14",
+  "due_date": null,
+  "project_name": null,
+  "customer_name": null,
+  "po_number": null,
+  "subtotal": 2100.00,
+  "tax": 168.00,
+  "total": 2268.00,
+  "currency": "USD",
+  "payment_terms": null,
+  "line_items": []
+}
