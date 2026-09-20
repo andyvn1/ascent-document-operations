@@ -190,3 +190,52 @@ status code.
 **Carried forward, not blocking Week 3 close-out:** FR2–FR9 (classification,
 extraction, review, export, webhooks) are Week 4–6 scope, not Week 3's —
 correctly out of scope here.
+
+---
+
+## Week 4 review against `docs/product/requirements.md`
+
+Checking Week 4's output (`AIProvider` protocol + `MockProvider`, the OpenAI-
+backed `CloudProvider`, invoice classification/extraction, confidence
+scoring/duplicate detection, and the extraction-quality evaluation added
+this task) against the requirements this phase was meant to satisfy:
+
+| Requirement | Addressed by |
+|---|---|
+| FR2 classify before extraction | `classify_document()` gates `extract_invoice()` — raises `NotAnInvoiceError` before any extraction call is made if the document isn't classified as an invoice |
+| FR3 extract all fields with a confidence score, per document type | `InvoiceData` covers every invoice field from the master plan; `score_invoice_fields()` gives every field a confidence score. Invoices only this week — change orders are TASK-021 (Week 5), correctly out of scope here |
+| FR4 flag missing/invalid fields, numeric mismatch, likely duplicates | `extract_invoice()` returns `missing_required_fields`; `numeric_inconsistencies()` cross-validates subtotal+tax=total and line-item sums; `find_duplicate()` matches on vendor+invoice#+amount |
+| NFR1 failed jobs retry with backoff | Extends to the model-call level this week: `CloudProvider` configures the OpenAI client's own retry/timeout handling (TASK-017), on top of the job-level retry already built in TASK-014 |
+| NFR2 secrets via env, never logged | `OPENAI_API_KEY` loads through `Settings` (pydantic-settings) from `.env`, never hardcoded; `CloudProvider`'s usage logging records token counts and cost, never the key itself |
+| NFR4 latency | `[ASSUMPTION]` resolved: the TASK-020 evaluation ran 5 documents (10 real `gpt-5-nano` calls: classify + extract each) in 89s total, ~9s/call — comfortably under a minute per document even with margin for larger invoices |
+| NFR5 external services mocked in unit tests, real paid APIs never in default CI | `test_invoice_evaluation.py` is `skipif`-gated on `AI_PROVIDER=cloud` + a real key being configured, so it never runs (or costs money) in a default `pytest` invocation; every other AI-touching test uses `MockProvider` or a fake client |
+| NFR6 AI accessed only through `AIProvider`, swappable without touching business logic | Confirmed working, not just designed: `extraction.py`/`validation.py` import only `AIProvider`, never `openai`; swapping `MockProvider` ↔ `CloudProvider` is a one-line config change (`AI_PROVIDER`) |
+
+**Evaluation findings (TASK-020):** the first real run against the 5
+synthetic fixtures scored 96% (2 field mismatches out of 5 documents).
+Both were reviewed and categorized before fixing anything:
+
+- **Prompt problem:** `duplicate-b`'s dates were printed as US-format
+  `03/11/2026`; the extraction prompt never said how to normalize dates,
+  and the model mangled the ISO conversion. Fixed by adding an explicit
+  date-normalization instruction to `_EXTRACTION_SYSTEM_PROMPT`.
+- **Not a prompt or code problem — a bad fixture:** `missing-optional-fields`
+  "failed" because the model returned one line item (just a description,
+  no quantity/price) for a document whose only billing detail was a
+  descriptive sentence with no item table. The extraction was correct; the
+  TASK-019 ground truth wrongly assumed an empty `line_items` list. Fixed
+  by correcting the fixture, not the code — the distinguishing question was
+  "does the output match what a careful human would read off the
+  document," not "does it match what I assumed when I wrote the fixture."
+
+Re-running after both fixes: **100%** (0 mismatches across all 5 fixtures).
+
+**Gap closed this task:** NFR4's latency target was an open `[ASSUMPTION]`
+since the Week 3 review, explicitly deferred pending TASK-017. It's now
+backed by a real measurement rather than a guess.
+
+**Carried forward, not blocking Week 4 close-out:** extraction/validation
+are not yet called from `documents/processing.py` — the job handler still
+only moves a document `uploaded → processing → extracted` as a placeholder.
+Wiring the real pipeline in, persisting `extracted_fields`/`invoice_data`,
+and change-order extraction are Week 5 scope (TASK-021–024), not Week 4's.

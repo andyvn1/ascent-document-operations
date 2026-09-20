@@ -38,7 +38,10 @@ _EXTRACTION_SYSTEM_PROMPT = (
     "You extract structured data from construction-vendor invoices. "
     "Return only what is actually printed on the document -- if a "
     "field isn't present, leave it null rather than guessing or "
-    "inventing a value."
+    "inventing a value. Dates may be printed in any format (e.g. "
+    "'03/11/2026', 'March 11, 2026', '2026-03-11') -- always convert "
+    "them to ISO 8601 (YYYY-MM-DD) in your output, regardless of the "
+    "format printed on the document."
 )
 
 

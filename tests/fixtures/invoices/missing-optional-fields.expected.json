@@ -11,5 +11,12 @@
   "total": 2268.00,
   "currency": "USD",
   "payment_terms": null,
-  "line_items": []
+  "line_items": [
+    {
+      "description": "Panel upgrade and rough-in wiring, Unit 4B",
+      "quantity": null,
+      "unit_price": null,
+      "cost_code": null
+    }
+  ]
 }
