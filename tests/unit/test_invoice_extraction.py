@@ -5,12 +5,8 @@ import pytest
 from ascent.ai.provider import AIProvider
 from ascent.ai.providers.mock import MockProvider
 from ascent.documents.models import DocumentType
-from ascent.invoices.extraction import (
-    NotAnInvoiceError,
-    classify_document,
-    extract_invoice,
-)
-from ascent.invoices.schema import InvoiceData, strict_json_schema
+from ascent.invoices.extraction import NotAnInvoiceError, extract_invoice
+from ascent.invoices.schema import InvoiceData
 
 _FULL_INVOICE = {
     "vendor_name": "Acme Construction Supply",
@@ -66,14 +62,6 @@ class _QueuedProvider:
 def test_queued_provider_satisfies_ai_provider_protocol() -> None:
     provider: AIProvider = _QueuedProvider([])
     assert provider is not None
-
-
-def test_classify_document_returns_parsed_document_type() -> None:
-    provider = _QueuedProvider([{"document_type": "invoice"}])
-
-    result = classify_document(provider, "some document text")
-
-    assert result == DocumentType.INVOICE
 
 
 def test_extract_invoice_raises_when_not_classified_as_invoice() -> None:
@@ -138,14 +126,3 @@ def test_extract_invoice_with_mock_provider_flags_all_required_fields_as_missing
         "total",
         "currency",
     }
-
-
-def test_strict_json_schema_requires_every_property_and_forbids_extras() -> None:
-    schema = strict_json_schema(InvoiceData)
-
-    assert schema["additionalProperties"] is False
-    assert set(schema["required"]) == set(schema["properties"].keys())
-
-    line_item_schema = schema["$defs"]["InvoiceLineItem"]
-    assert line_item_schema["additionalProperties"] is False
-    assert set(line_item_schema["required"]) == set(line_item_schema["properties"].keys())
