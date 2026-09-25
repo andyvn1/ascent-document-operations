@@ -1,38 +1,20 @@
 """Invoice classification and extraction.
 
-Classification runs before extraction (FR2) so the more expensive
-structured-extraction call only happens once a document is known to be
-an invoice -- extracting invoice fields from a change order or an
-unrelated document blindly would populate invoice data with noise a
-reviewer then has to notice and reject by hand, rather than the
-pipeline never producing it in the first place.
+Classification (see documents/classification.py) runs before extraction
+(FR2) so the more expensive structured-extraction call only happens
+once a document is known to be an invoice -- extracting invoice fields
+from a change order or an unrelated document blindly would populate
+invoice data with noise a reviewer then has to notice and reject by
+hand, rather than the pipeline never producing it in the first place.
 """
 
 from pydantic import BaseModel
 
 from ascent.ai.provider import AIProvider
+from ascent.ai.schema import strict_json_schema
+from ascent.documents.classification import classify_document
 from ascent.documents.models import DocumentType
-from ascent.invoices.schema import REQUIRED_FIELDS, InvoiceData, strict_json_schema
-
-_CLASSIFICATION_SCHEMA: dict[str, object] = {
-    "type": "object",
-    "properties": {
-        "document_type": {
-            "type": "string",
-            "enum": [member.value for member in DocumentType],
-        }
-    },
-    "required": ["document_type"],
-    "additionalProperties": False,
-}
-
-_CLASSIFICATION_SYSTEM_PROMPT = (
-    "You classify business documents for a construction company. Read "
-    "the document text and return its type: 'invoice' for vendor "
-    "invoices and bills, 'change_order' for construction change "
-    "orders, or 'unrecognized' for anything else (purchase orders, "
-    "quotes, receipts, correspondence, etc.)."
-)
+from ascent.invoices.schema import REQUIRED_FIELDS, InvoiceData
 
 _EXTRACTION_SYSTEM_PROMPT = (
     "You extract structured data from construction-vendor invoices. "
@@ -58,15 +40,6 @@ class NotAnInvoiceError(ValueError):
 class InvoiceExtractionResult(BaseModel):
     data: InvoiceData
     missing_required_fields: list[str]
-
-
-def classify_document(provider: AIProvider, document_text: str) -> DocumentType:
-    result = provider.generate_structured_output(
-        system_prompt=_CLASSIFICATION_SYSTEM_PROMPT,
-        user_prompt=document_text,
-        output_schema=_CLASSIFICATION_SCHEMA,
-    )
-    return DocumentType(result["document_type"])
 
 
 def extract_invoice(provider: AIProvider, document_text: str) -> InvoiceExtractionResult:
