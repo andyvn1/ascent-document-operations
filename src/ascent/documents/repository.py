@@ -99,6 +99,49 @@ def transition_status(
     return document
 
 
+def list_review_queue(
+    session: Session,
+    *,
+    tenant_id: uuid.UUID,
+    status: DocumentStatus | None = None,
+    document_type: DocumentType | None = None,
+    min_confidence: float | None = None,
+    max_confidence: float | None = None,
+    page: int = 1,
+    page_size: int = 20,
+) -> tuple[list[Document], int]:
+    """Return (items, total) -- total is the full matching count before
+    pagination, so a caller can compute page count without a second
+    round trip. tenant_id is mandatory and keyword-only, matching
+    list_audit_events, so a query scoped to the wrong tenant (or no
+    tenant at all) can't be constructed by accident.
+    """
+    query = session.query(Document).filter(Document.tenant_id == tenant_id)
+    if status is not None:
+        query = query.filter(Document.status == status)
+    if document_type is not None:
+        query = query.filter(Document.document_type == document_type)
+    if min_confidence is not None:
+        query = query.filter(Document.confidence >= min_confidence)
+    if max_confidence is not None:
+        query = query.filter(Document.confidence <= max_confidence)
+
+    total = query.count()
+    items = (
+        # id as a tiebreaker: created_at alone isn't unique enough to
+        # page on reliably -- Postgres's now() returns the same value
+        # for every statement in one transaction, so rows inserted
+        # together (e.g. a batch upload, or a test) can share an
+        # identical created_at. Without a unique secondary sort key,
+        # which row lands on which page could vary between requests.
+        query.order_by(Document.created_at.desc(), Document.id)
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+    return list(items), total
+
+
 def list_audit_events(
     session: Session, *, tenant_id: uuid.UUID, document_id: uuid.UUID
 ) -> list[AuditEvent]:
