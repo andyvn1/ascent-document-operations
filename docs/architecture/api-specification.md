@@ -45,9 +45,16 @@ Response: `201 Created` with the document's id and initial status.
 GET /api/v1/documents
 ```
 Lists documents for the current tenant. Query params: `status`,
-`document_type`, `page`, `page_size`. This is the review-queue endpoint
-(FR5, TASK-022) once documents reach `in_review`, but also usable to see
-documents at any stage.
+`document_type`, `min_confidence`, `max_confidence`, `page`, `page_size`.
+This is the review-queue endpoint (FR5, TASK-022) once documents reach
+`in_review`, but also usable to see documents at any stage.
+
+`[ASSUMPTION]` `min_confidence`/`max_confidence` filter on `documents.confidence`
+-- a single, document-level score (TASK-022), not the per-field confidence in
+`extracted_fields`. It's nullable and unpopulated until extraction is wired
+into the processing pipeline (still a gap as of TASK-022 — see
+`documents/processing.py`), so a document with no score yet is correctly
+excluded by either bound (SQL `NULL >= x` is neither true nor false).
 
 ### Documents — detail & correction (FR3–FR7)
 

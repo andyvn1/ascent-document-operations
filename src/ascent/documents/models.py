@@ -44,13 +44,9 @@ class DocumentStatus(enum.StrEnum):
 class Document(Base):
     __tablename__ = "documents"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenants.id"), nullable=False)
-    uploaded_by_user_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("users.id"), nullable=False
-    )
+    uploaded_by_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
     original_filename: Mapped[str] = mapped_column(String, nullable=False)
     storage_key: Mapped[str] = mapped_column(String, nullable=False)
     document_type: Mapped[DocumentType] = mapped_column(
@@ -77,10 +73,17 @@ class Document(Base):
         nullable=False,
         default=DocumentStatus.UPLOADED,
     )
+    # An overall confidence for the document as a whole, so the review
+    # queue (TASK-022) can filter/sort by "needs scrutiny" without
+    # joining per-field data. Per-field confidence lives in
+    # extracted_fields (docs/architecture/database-design.md) once that
+    # table exists; this is a coarser, document-level signal, not a
+    # replacement for it. Nullable and unpopulated until extraction is
+    # actually wired into the processing pipeline -- see
+    # documents/processing.py.
+    confidence: Mapped[float | None] = mapped_column(nullable=True)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(
-        server_default=func.now(), onupdate=func.now()
-    )
+    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
 
     audit_events: Mapped[list["AuditEvent"]] = relationship(
         back_populates="document", order_by="AuditEvent.created_at"
@@ -90,9 +93,7 @@ class Document(Base):
 class AuditEvent(Base):
     __tablename__ = "audit_events"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenants.id"), nullable=False)
     document_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("documents.id"), nullable=False)
     user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True)
