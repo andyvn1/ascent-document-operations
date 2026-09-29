@@ -58,6 +58,7 @@ erDiagram
     }
     EXTRACTED_FIELD {
         uuid id PK
+        uuid tenant_id FK
         uuid document_id FK
         string field_name
         string extracted_value
@@ -150,18 +151,26 @@ The central entity. `document_type` is set by classification;
 ### `extracted_fields`
 One row per extracted field, so confidence and correction tracking apply
 uniformly regardless of document type — this is what lets FR3/FR4/FR7 work
-without a different table shape per document type.
+without a different table shape per document type. Built in TASK-023.
 
 | Column | Type | Notes |
 |---|---|---|
 | id | uuid, PK | |
+| tenant_id | uuid, FK → tenants.id | Not in the original sketch above, added in TASK-023 to match `audit_events`: every tenant-owned table carries it directly, so a query is scoped by a plain equality filter instead of a join through `documents` |
 | document_id | uuid, FK → documents.id | |
-| field_name | text | e.g. `vendor_name`, `total` |
-| extracted_value | text | raw AI output, never overwritten |
+| field_name | text | e.g. `vendor_name`, `total` — matches a field name on `InvoiceData`/`ChangeOrderData` (`src/ascent/invoices/schema.py`, `src/ascent/change_orders/schema.py`) |
+| extracted_value | text | raw AI output, stringified regardless of the field's original type (float, date, or a JSON-encoded list for `line_items`), never overwritten |
 | confidence | float | 0.0–1.0 |
-| corrected_value | text, nullable | set only by a reviewer action |
+| corrected_value | text, nullable | set only by a reviewer action (`src/ascent/documents/corrections.py`) |
 | is_corrected | boolean | |
 | created_at | timestamptz | |
+
+`[ASSUMPTION]` The table and the `GET`/`PATCH` endpoints that read and correct
+it (TASK-023) are built and tested against directly-inserted rows. Nothing
+yet calls `extract_invoice`/`extract_change_order` and writes their result
+into this table — that wiring, plus turning an uploaded PDF's bytes into the
+`document_text` those functions expect, remains an open gap (see
+`documents/processing.py`).
 
 ### `invoice_data` / `change_order_data`
 Typed, queryable projections of the fields most likely to be filtered,

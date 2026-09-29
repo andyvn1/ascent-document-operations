@@ -18,14 +18,8 @@ import uuid
 from sqlalchemy.orm import Session
 
 from ascent.documents.models import Document, DocumentStatus
-from ascent.documents.repository import transition_status
+from ascent.documents.repository import DocumentNotFoundError, transition_status
 from ascent.jobs.models import Job
-
-
-class DocumentNotFoundError(ValueError):
-    def __init__(self, document_id: uuid.UUID) -> None:
-        self.document_id = document_id
-        super().__init__(f"document not found: {document_id}")
 
 
 def process_document_job(session: Session, job: Job) -> None:

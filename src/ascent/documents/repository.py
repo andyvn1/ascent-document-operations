@@ -8,7 +8,7 @@ a document between states.
 Audit events are append-only by omission: this module deliberately does
 not expose any update or delete function for AuditEvent. Nothing here
 enforces that at the database level (no trigger) — the guarantee is
-"the only code path that writes an event is _record_event, and nothing
+"the only code path that writes an event is record_event, and nothing
 calls session.merge/update on an existing one," which is enough for the
 MVP. A database-level trigger is a possible future hardening step if
 that guarantee ever needs to hold even against a bug, not just against
@@ -20,7 +20,13 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from ascent.documents.models import AuditEvent, Document, DocumentStatus, DocumentType
+from ascent.documents.models import (
+    AuditEvent,
+    Document,
+    DocumentStatus,
+    DocumentType,
+    ExtractedField,
+)
 
 _ALLOWED_TRANSITIONS: dict[DocumentStatus, frozenset[DocumentStatus]] = {
     DocumentStatus.UPLOADED: frozenset({DocumentStatus.PROCESSING}),
@@ -31,6 +37,20 @@ _ALLOWED_TRANSITIONS: dict[DocumentStatus, frozenset[DocumentStatus]] = {
     DocumentStatus.REJECTED: frozenset(),
     DocumentStatus.EXPORTED: frozenset(),
 }
+
+
+class DocumentNotFoundError(ValueError):
+    """Shared across every caller that looks up a document by id --
+    processing.py (internal, no tenant scoping needed: a job's
+    document_id came from our own enqueue call) and corrections.py
+    (external caller, tenant-scoped via get_document -- see its
+    docstring for why a wrong tenant looks identical to "doesn't
+    exist" here, rather than being a separate error).
+    """
+
+    def __init__(self, document_id: uuid.UUID) -> None:
+        self.document_id = document_id
+        super().__init__(f"document not found: {document_id}")
 
 
 class InvalidTransitionError(ValueError):
@@ -59,7 +79,7 @@ def create_document(
     session.add(document)
     session.flush()
 
-    _record_event(
+    record_event(
         session,
         document=document,
         event_type="uploaded",
@@ -85,7 +105,7 @@ def transition_status(
     document.status = new_status
     session.flush()
 
-    _record_event(
+    record_event(
         session,
         document=document,
         event_type=new_status.value,
@@ -153,7 +173,7 @@ def list_audit_events(
     )
 
 
-def _record_event(
+def record_event(
     session: Session,
     *,
     document: Document,
@@ -161,6 +181,12 @@ def _record_event(
     user_id: uuid.UUID | None,
     event_data: dict[str, Any],
 ) -> AuditEvent:
+    """Public (not prefixed with _) because corrections.py's
+    correct_field also needs to write a field_corrected event -- the
+    same "every state change gets one audit row" rule this module
+    already enforces for status transitions, just triggered from a
+    different workflow action.
+    """
     event = AuditEvent(
         tenant_id=document.tenant_id,
         document_id=document.id,
@@ -171,3 +197,43 @@ def _record_event(
     session.add(event)
     session.flush()
     return event
+
+
+def get_document(
+    session: Session, *, tenant_id: uuid.UUID, document_id: uuid.UUID
+) -> Document | None:
+    """Returns None (never raises) on a wrong tenant/unknown id alike,
+    so a route handler can turn a miss into a 404 without distinguishing
+    "doesn't exist" from "belongs to someone else" -- see
+    api-specification.md: never leak which case it was via a 403.
+    """
+    return (
+        session.query(Document)
+        .filter(Document.id == document_id, Document.tenant_id == tenant_id)
+        .one_or_none()
+    )
+
+
+def list_extracted_fields(
+    session: Session, *, tenant_id: uuid.UUID, document_id: uuid.UUID
+) -> list[ExtractedField]:
+    return list(
+        session.query(ExtractedField)
+        .filter(ExtractedField.tenant_id == tenant_id, ExtractedField.document_id == document_id)
+        .order_by(ExtractedField.field_name)
+        .all()
+    )
+
+
+def get_extracted_field(
+    session: Session, *, tenant_id: uuid.UUID, document_id: uuid.UUID, field_name: str
+) -> ExtractedField | None:
+    return (
+        session.query(ExtractedField)
+        .filter(
+            ExtractedField.tenant_id == tenant_id,
+            ExtractedField.document_id == document_id,
+            ExtractedField.field_name == field_name,
+        )
+        .one_or_none()
+    )

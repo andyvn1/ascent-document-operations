@@ -88,6 +88,39 @@ class Document(Base):
     audit_events: Mapped[list["AuditEvent"]] = relationship(
         back_populates="document", order_by="AuditEvent.created_at"
     )
+    extracted_fields: Mapped[list["ExtractedField"]] = relationship(
+        back_populates="document", order_by="ExtractedField.field_name"
+    )
+
+
+class ExtractedField(Base):
+    """One row per field an extraction produced (TASK-018/021's
+    InvoiceData/ChangeOrderData, flattened) -- see
+    docs/architecture/database-design.md. extracted_value is never
+    overwritten; a reviewer's correction goes in corrected_value with
+    is_corrected flipped, so what the model actually said is always
+    still there to audit later (see corrections.py).
+
+    Carries tenant_id directly, same as AuditEvent, even though the
+    original database-design.md sketch didn't -- every tenant-owned
+    table in this codebase does, specifically so a query can be scoped
+    by a plain equality filter instead of a join through documents,
+    which would make a missing tenant_id filter easier to miss.
+    """
+
+    __tablename__ = "extracted_fields"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenants.id"), nullable=False)
+    document_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("documents.id"), nullable=False)
+    field_name: Mapped[str] = mapped_column(String, nullable=False)
+    extracted_value: Mapped[str | None] = mapped_column(String, nullable=True)
+    confidence: Mapped[float] = mapped_column(nullable=False)
+    corrected_value: Mapped[str | None] = mapped_column(String, nullable=True)
+    is_corrected: Mapped[bool] = mapped_column(nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+    document: Mapped["Document"] = relationship(back_populates="extracted_fields")
 
 
 class AuditEvent(Base):
