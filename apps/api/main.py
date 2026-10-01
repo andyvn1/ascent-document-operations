@@ -8,6 +8,7 @@ import logging
 from fastapi import FastAPI
 
 from apps.api.routes import documents, review
+from apps.web.routes import router as web_router
 from ascent.shared import model_registry  # noqa: F401
 from ascent.shared.config import get_settings
 from ascent.shared.logging import configure_logging
@@ -19,6 +20,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="Ascent Document Operations")
 app.include_router(documents.router)
 app.include_router(review.router)
+app.include_router(web_router)
 
 
 @app.get("/healthz")

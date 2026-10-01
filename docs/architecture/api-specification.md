@@ -246,3 +246,82 @@ are not yet called from `documents/processing.py` — the job handler still
 only moves a document `uploaded → processing → extracted` as a placeholder.
 Wiring the real pipeline in, persisting `extracted_fields`/`invoice_data`,
 and change-order extraction are Week 5 scope (TASK-021–024), not Week 4's.
+
+---
+
+## Week 5 review against `docs/product/requirements.md`
+
+Checking Week 5's output (change-order classification/extraction, the
+review queue API, the document detail/correction API and its
+`extracted_fields` table, the approval/rejection workflow, and the
+review dashboard UI) against the requirements this phase was meant to
+satisfy:
+
+| Requirement | Addressed by |
+|---|---|
+| FR3 extract all fields with confidence, per document type | `ChangeOrderData` (TASK-021) completes what Week 4 started for invoices only — both document types now extract fully |
+| FR4 flag missing/invalid fields | Change orders add a signal invoices didn't need: `requires_approval_review` (TASK-021) is deliberately *not* folded into `missing_required_fields` — a missing approver is a normal pre-approval state, not an extraction defect, but still must hard-block auto-processing downstream |
+| FR5 reviewer view + correct + approve/reject | `GET /api/v1/documents` (queue, TASK-022), `GET /api/v1/documents/{id}` + `PATCH .../fields/{field_name}` (detail/correction, TASK-023), `approve_document`/`reject_document` (TASK-024), and the dashboard UI (`apps/web/`, TASK-025) tying all of it together for a human |
+| FR6 only approval releases data; reject requires comment | `approve_document` is the only function that sets `status=approved`, and requires a real `user_id` by construction (not optional, unlike `transition_status` elsewhere) — "no auto-approval" is enforced by the signature, not a convention. `reject_document` raises `MissingRejectionCommentError` on a blank comment |
+| FR7 every transition/correction audited, never overwritten | `extracted_fields.extracted_value` is never overwritten — a correction only ever sets `corrected_value`/`is_corrected`, and `record_event()` (promoted from a private helper once `corrections.py` needed it too) writes an audit event for every correction and every approval/rejection |
+| FR10 tenant-scoped, no cross-tenant leak | `ExtractedField` carries `tenant_id` directly, same as `AuditEvent` — not in the original database-design.md sketch, added to match that existing pattern so a query is a plain equality filter, not a join through `documents` |
+
+**Gap closed this task:** TASK-022 flagged that `documents.confidence`
+would sit `NULL` for every document until something populated it. The
+dashboard (TASK-025) is the first thing to actually *read and display*
+`extracted_fields.confidence` per field (highlighting anything under 0.5),
+even though nothing populates either column from a real extraction run
+yet — see the gap below.
+
+**Two real bugs found building the dashboard, both fixed, both worth
+recording:**
+
+- Calling `db.rollback()` in a route's exception handler for a
+  guard-clause exception (raised *before* any mutation) discards more
+  than intended — in production it's merely redundant (`get_db`'s
+  `finally: db.close()` already discards anything uncommitted when the
+  request ends), but combined with the integration tests' SAVEPOINT-based
+  session it silently wiped out the test's own setup data created earlier
+  in the same test. Removed, matching `apps/api/routes/documents.py`'s
+  `correct_document_field`, which never called it either.
+- FastAPI/Starlette treats a required `Form(str)` field submitted as an
+  **empty string** as *missing entirely* (confirmed with a minimal
+  repro), returning a raw JSON 422 before the route body ever runs. For
+  a browser-facing HTML route this is a real UX defect, not just an edge
+  case: a reviewer submitting a blank rejection comment would see raw
+  JSON instead of `reject_document`'s own rendered error page. Fixed by
+  defaulting the field to `""` and letting the existing business-logic
+  check (`MissingRejectionCommentError`) handle validation instead of
+  relying on FastAPI's parameter validation for it.
+
+**A real, named tradeoff from choosing server-rendered HTML + HTMX over a
+React SPA (TASK-025's second learning objective):** the dashboard's
+mutating routes (`apps/web/routes.py`) call `correct_field`/
+`approve_document`/`reject_document` directly, in-process — not through
+the JSON API (`apps/api/routes/documents.py`). That leaves two parallel,
+slightly redundant route layers over the same business logic, rather than
+the JSON API being the dashboard's only way to talk to the backend. A
+React SPA would not have this redundancy (a browser-side JS app has no
+way to call Python functions directly, so the JSON API would necessarily
+be its only path in) — the one genuine overlap is `GET
+/api/v1/documents/{id}/file`, which the dashboard's preview `<iframe>`
+calls directly as a real HTTP request, same as any other client would.
+
+**Carried forward, not blocking Week 5 close-out:**
+
+- Extraction still isn't wired into `documents/processing.py` — the
+  worker still only moves a document through placeholder status
+  transitions. Nothing populates `extracted_fields` or
+  `documents.confidence` from a real `extract_invoice`/
+  `extract_change_order` run, and nothing yet turns an uploaded PDF's
+  bytes into the `document_text` those functions expect. Flagged
+  repeatedly since TASK-022; still open, no ticket currently owns it.
+- The JSON API has no `POST /api/v1/documents/{id}/approve` or
+  `.../reject` — `apps/web/routes.py` calls `workflow.py` directly
+  instead. An external API client (as opposed to the dashboard) still
+  has no way to approve or reject a document. Also flagged since
+  TASK-024; no ticket currently owns this either.
+- Real authentication (a verified-but-unauthenticated `X-User-Id`
+  header or `user_id` cookie stands in for it) remains unbuilt, as it
+  has been since TASK-015 — scanning the full remaining roadmap
+  (TASK-026–030), no ticket builds it.

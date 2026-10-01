@@ -3,7 +3,7 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, HTTPException, Response, UploadFile, status
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
@@ -137,6 +137,28 @@ def get_document_detail(
         original_filename=document.original_filename,
         fields=[ExtractedFieldOut.model_validate(field) for field in fields],
     )
+
+
+@router.get("/{document_id}/file")
+def get_document_file(
+    document_id: uuid.UUID,
+    actor: Annotated[AuthContext, Depends(get_current_actor)],
+    db: Annotated[Session, Depends(get_db)],
+    storage: Annotated[ObjectStorage, Depends(get_storage)],
+) -> Response:
+    """Streams the raw uploaded bytes back, for the review dashboard's
+    document preview (TASK-025). Content-Type is re-sniffed from the
+    bytes rather than trusted from anywhere else -- same reasoning as
+    upload_document's own sniff: don't trust anything that isn't the
+    bytes themselves.
+    """
+    document = get_document(db, tenant_id=actor.tenant_id, document_id=document_id)
+    if document is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+
+    content = storage.retrieve(key=document.storage_key)
+    media_type = _detect_content_type(content) or "application/octet-stream"
+    return Response(content=content, media_type=media_type)
 
 
 @router.patch("/{document_id}/fields/{field_name}")
