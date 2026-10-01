@@ -8,6 +8,7 @@ from collections.abc import Generator
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from apps.api.main import app
@@ -113,6 +114,80 @@ def test_login_submit_sets_cookie_and_redirects(
     assert response.status_code == 303
     assert response.headers["location"] == "/review"
     assert client.cookies.get("user_id") == str(reviewer.id)
+
+
+def test_signup_page_renders(client: TestClient) -> None:
+    response = client.get("/signup")
+
+    assert response.status_code == 200
+    assert "Sign up" in response.text
+
+
+def test_signup_creates_tenant_and_user_and_logs_in(
+    client: TestClient, db_session: Session
+) -> None:
+    response = client.post(
+        "/signup",
+        data={"email": "new-reviewer@newco.test", "company_name": "New Co"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/review"
+
+    user = db_session.scalar(select(User).where(User.email == "new-reviewer@newco.test"))
+    assert user is not None
+    assert client.cookies.get("user_id") == str(user.id)
+
+    tenant = db_session.get(Tenant, user.tenant_id)
+    assert tenant is not None
+    assert tenant.name == "New Co"
+
+
+def test_signup_rejects_an_already_registered_email(
+    client: TestClient, tenant_and_reviewer: tuple[Tenant, User]
+) -> None:
+    _tenant, reviewer = tenant_and_reviewer
+
+    response = client.post(
+        "/signup",
+        # Different case on purpose -- the check is case-insensitive.
+        data={"email": reviewer.email.upper(), "company_name": "Another Co"},
+    )
+
+    assert response.status_code == 409
+    assert "already registered" in response.text
+
+
+def test_signup_allows_two_tenants_with_the_same_company_name(
+    client: TestClient, db_session: Session
+) -> None:
+    # Tenant.name has nothing keyed off it for identity or security --
+    # only the email has to be unique -- so two signups choosing the
+    # same company name must both succeed as two separate tenants.
+    first = client.post(
+        "/signup",
+        data={"email": "first@shared-name.test", "company_name": "Shared Name Inc"},
+        follow_redirects=False,
+    )
+    assert first.status_code == 303
+
+    second = client.post(
+        "/signup",
+        data={"email": "second@shared-name.test", "company_name": "Shared Name Inc"},
+        follow_redirects=False,
+    )
+    assert second.status_code == 303
+
+    tenants = db_session.query(Tenant).filter(Tenant.name == "Shared Name Inc").all()
+    assert len(tenants) == 2
+    assert tenants[0].id != tenants[1].id
+
+
+def test_signup_requires_both_fields(client: TestClient) -> None:
+    response = client.post("/signup", data={"email": "only-email@x.test", "company_name": ""})
+
+    assert response.status_code == 422
 
 
 def test_review_queue_without_cookie_redirects_to_login(client: TestClient) -> None:

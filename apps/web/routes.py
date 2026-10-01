@@ -24,7 +24,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from apps.web.auth import COOKIE_NAME, get_current_web_actor
@@ -48,7 +48,7 @@ from ascent.documents.workflow import (
 )
 from ascent.security.tenancy import AuthContext
 from ascent.shared.db import get_db
-from ascent.shared.models import User
+from ascent.shared.models import Tenant, User
 
 router = APIRouter()
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
@@ -111,6 +111,60 @@ def login_form(request: Request, db: Annotated[Session, Depends(get_db)]) -> HTM
 def login_submit(user_id: Annotated[uuid.UUID, Form()]) -> RedirectResponse:
     response = RedirectResponse(url="/review", status_code=303)
     response.set_cookie(key=COOKIE_NAME, value=str(user_id), httponly=True)
+    return response
+
+
+@router.get("/signup", response_class=HTMLResponse)
+def signup_form(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(request, "signup.html", {})
+
+
+@router.post("/signup", response_class=HTMLResponse, response_model=None)
+def signup_submit(
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    # Both default to "" rather than being required -- same FastAPI
+    # quirk as review_reject's comment field: a required Form(str)
+    # submitted empty is treated as missing entirely (a raw 422)
+    # rather than reaching this function's own validation.
+    email: Annotated[str, Form()] = "",
+    company_name: Annotated[str, Form()] = "",
+) -> HTMLResponse | RedirectResponse:
+    email = email.strip()
+    company_name = company_name.strip()
+
+    if not email or not company_name:
+        return templates.TemplateResponse(
+            request,
+            "signup.html",
+            {"error": "Both email and company name are required."},
+            status_code=422,
+        )
+
+    # The only uniqueness that actually matters is the email -- User.email
+    # is already unique at the database level (one email, one tenant,
+    # always -- see shared/models.py). Tenant.name is just a display
+    # label with nothing keyed off it for identity or security, so two
+    # tenants sharing a name is harmless and not checked for here.
+    existing_user = db.scalar(select(User).where(func.lower(User.email) == email.lower()))
+    if existing_user is not None:
+        return templates.TemplateResponse(
+            request,
+            "signup.html",
+            {"error": "That email is already registered -- log in instead."},
+            status_code=409,
+        )
+
+    tenant = Tenant(name=company_name)
+    db.add(tenant)
+    db.flush()
+
+    user = User(tenant_id=tenant.id, email=email, role="reviewer")
+    db.add(user)
+    db.commit()
+
+    response = RedirectResponse(url="/review", status_code=303)
+    response.set_cookie(key=COOKIE_NAME, value=str(user.id), httponly=True)
     return response
 
 
