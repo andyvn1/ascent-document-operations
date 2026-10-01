@@ -172,6 +172,34 @@ def get_document_detail(
     )
 
 
+def serve_document_file(
+    *,
+    document_id: uuid.UUID,
+    tenant_id: uuid.UUID,
+    db: Session,
+    storage: ObjectStorage,
+) -> Response:
+    """Streams the raw uploaded bytes back. Shared by this JSON
+    endpoint (header auth) and apps/web/routes.py's own file route
+    (cookie auth) -- an <iframe> embedded in a browser page is the
+    browser loading a sub-resource on its own, same as a link click:
+    it sends cookies automatically but never custom headers, so the
+    dashboard's preview cannot use this header-authenticated route
+    directly and needs its own cookie-authenticated entry point onto
+    the same logic. Content-Type is re-sniffed from the bytes rather
+    than trusted from anywhere else -- same reasoning as
+    upload_document's own sniff: don't trust anything that isn't the
+    bytes themselves.
+    """
+    document = get_document(db, tenant_id=tenant_id, document_id=document_id)
+    if document is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+
+    content = storage.retrieve(key=document.storage_key)
+    media_type = _detect_content_type(content) or "application/octet-stream"
+    return Response(content=content, media_type=media_type)
+
+
 @router.get("/{document_id}/file")
 def get_document_file(
     document_id: uuid.UUID,
@@ -179,19 +207,9 @@ def get_document_file(
     db: Annotated[Session, Depends(get_db)],
     storage: Annotated[ObjectStorage, Depends(get_storage)],
 ) -> Response:
-    """Streams the raw uploaded bytes back, for the review dashboard's
-    document preview (TASK-025). Content-Type is re-sniffed from the
-    bytes rather than trusted from anywhere else -- same reasoning as
-    upload_document's own sniff: don't trust anything that isn't the
-    bytes themselves.
-    """
-    document = get_document(db, tenant_id=actor.tenant_id, document_id=document_id)
-    if document is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
-
-    content = storage.retrieve(key=document.storage_key)
-    media_type = _detect_content_type(content) or "application/octet-stream"
-    return Response(content=content, media_type=media_type)
+    return serve_document_file(
+        document_id=document_id, tenant_id=actor.tenant_id, db=db, storage=storage
+    )
 
 
 @router.patch("/{document_id}/fields/{field_name}")

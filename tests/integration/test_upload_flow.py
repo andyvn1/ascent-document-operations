@@ -95,6 +95,13 @@ def test_successful_upload_creates_document_stores_file_and_enqueues_job(
 def test_upload_without_auth_creates_no_document_or_job(
     client: TestClient, db_session: Session
 ) -> None:
+    # Counts are compared before/after rather than asserted to be zero --
+    # this test's db_session points at the same database the dockerized
+    # dev app uses (see .env's DATABASE_URL), so other, unrelated rows may
+    # already exist there from manual testing.
+    documents_before = db_session.query(Document).count()
+    jobs_before = db_session.query(Job).count()
+
     content = (FIXTURES / "sample-invoice.pdf").read_bytes()
     response = client.post(
         "/api/v1/documents",
@@ -102,5 +109,5 @@ def test_upload_without_auth_creates_no_document_or_job(
     )
 
     assert response.status_code == 401
-    assert db_session.query(Document).count() == 0
-    assert db_session.query(Job).count() == 0
+    assert db_session.query(Document).count() == documents_before
+    assert db_session.query(Job).count() == jobs_before

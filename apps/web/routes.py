@@ -21,7 +21,7 @@ import uuid
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Form, Request, UploadFile
+from fastapi import APIRouter, Depends, Form, Request, Response, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
@@ -32,6 +32,7 @@ from apps.api.routes.documents import (
     UploadTooLargeError,
     get_storage,
     handle_upload,
+    serve_document_file,
 )
 from apps.web.auth import COOKIE_NAME, get_current_web_actor
 from ascent.documents.corrections import (
@@ -247,6 +248,25 @@ def review_detail(
     db: Annotated[Session, Depends(get_db)],
 ) -> HTMLResponse:
     return _render_detail(request, db=db, tenant_id=actor.tenant_id, document_id=document_id)
+
+
+@router.get("/review/{document_id}/file")
+def review_document_file(
+    document_id: uuid.UUID,
+    actor: Annotated[AuthContext, Depends(get_current_web_actor)],
+    db: Annotated[Session, Depends(get_db)],
+    storage: Annotated[ObjectStorage, Depends(get_storage)],
+) -> Response:
+    """Cookie-authenticated counterpart to
+    apps/api/routes/documents.py's GET /api/v1/documents/{id}/file --
+    detail.html's preview <iframe> must point here, not there: an
+    <iframe> is the browser loading a sub-resource on its own, exactly
+    like a link click, so it sends the user_id cookie automatically but
+    can never attach the JSON API's X-User-Id header.
+    """
+    return serve_document_file(
+        document_id=document_id, tenant_id=actor.tenant_id, db=db, storage=storage
+    )
 
 
 @router.patch("/review/{document_id}/fields/{field_name}", response_class=HTMLResponse)

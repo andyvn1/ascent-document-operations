@@ -332,6 +332,76 @@ def test_review_detail_does_not_leak_other_tenants_document(
     assert response.status_code == 404
 
 
+def test_review_detail_preview_points_at_cookie_authenticated_file_route(
+    authenticated_client: TestClient,
+    db_session: Session,
+    tenant_and_reviewer: tuple[Tenant, User],
+) -> None:
+    # Regression test: the preview <iframe> must point at this cookie-
+    # authenticated route, not at the JSON API's header-authenticated
+    # /api/v1/documents/{id}/file -- an <iframe> is a browser sub-resource
+    # load like a link click, so it sends cookies automatically but can
+    # never attach the X-User-Id header the JSON API requires.
+    tenant, reviewer = tenant_and_reviewer
+    document = _create_document(db_session, tenant_id=tenant.id, user_id=reviewer.id)
+
+    response = authenticated_client.get(f"/review/{document.id}")
+
+    assert response.status_code == 200
+    assert f'src="/review/{document.id}/file"' in response.text
+    assert f"/api/v1/documents/{document.id}/file" not in response.text
+
+
+def test_review_document_file_serves_uploaded_content_with_cookie_auth(
+    authenticated_client: TestClient,
+) -> None:
+    with (FIXTURES / "sample-invoice.pdf").open("rb") as f:
+        content = f.read()
+        f.seek(0)
+        upload_response = authenticated_client.post(
+            "/upload",
+            files={"file": ("invoice.pdf", f, "application/pdf")},
+            follow_redirects=False,
+        )
+    document_id = upload_response.headers["location"].removeprefix("/review/")
+
+    response = authenticated_client.get(f"/review/{document_id}/file")
+
+    assert response.status_code == 200
+    assert response.content == content
+    assert response.headers["content-type"] == "application/pdf"
+
+
+def test_review_document_file_without_cookie_redirects_to_login(
+    client: TestClient,
+    db_session: Session,
+    tenant_and_reviewer: tuple[Tenant, User],
+) -> None:
+    tenant, reviewer = tenant_and_reviewer
+    document = _create_document(db_session, tenant_id=tenant.id, user_id=reviewer.id)
+
+    response = client.get(f"/review/{document.id}/file", follow_redirects=False)
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/login"
+
+
+def test_review_document_file_does_not_leak_other_tenants_document(
+    authenticated_client: TestClient, db_session: Session
+) -> None:
+    other_tenant = Tenant(name="Other Co")
+    db_session.add(other_tenant)
+    db_session.flush()
+    other_user = User(tenant_id=other_tenant.id, email="other-file@co.test", role="reviewer")
+    db_session.add(other_user)
+    db_session.flush()
+    other_document = _create_document(db_session, tenant_id=other_tenant.id, user_id=other_user.id)
+
+    response = authenticated_client.get(f"/review/{other_document.id}/file")
+
+    assert response.status_code == 404
+
+
 def test_review_correct_field_updates_value_and_returns_row_fragment(
     authenticated_client: TestClient,
     db_session: Session,
