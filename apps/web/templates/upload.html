@@ -1,0 +1,15 @@
+{% extends "_base.html" %}
+{% block title %}Upload — Ascent Review{% endblock %}
+{% block content %}
+<h1>Upload a document</h1>
+<p>PDF or image (JPEG/PNG) only.</p>
+
+{% if error %}
+<p class="error">{{ error }}</p>
+{% endif %}
+
+<form method="post" action="/upload" enctype="multipart/form-data">
+  <p><input type="file" name="file" accept=".pdf,.jpg,.jpeg,.png" required></p>
+  <button type="submit">Upload</button>
+</form>
+{% endblock %}

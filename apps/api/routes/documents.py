@@ -12,7 +12,7 @@ from ascent.documents.corrections import (
     FieldNotFoundError,
     correct_field,
 )
-from ascent.documents.models import DocumentStatus, DocumentType
+from ascent.documents.models import Document, DocumentStatus, DocumentType
 from ascent.documents.repository import (
     DocumentNotFoundError,
     create_document,
@@ -75,26 +75,34 @@ def get_storage(settings: Annotated[Settings, Depends(get_settings)]) -> ObjectS
     return LocalFileStorage(settings.storage_dir)
 
 
-@router.post("", status_code=status.HTTP_201_CREATED)
-async def upload_document(
+class UploadTooLargeError(ValueError):
+    pass
+
+
+class UnsupportedFileTypeError(ValueError):
+    pass
+
+
+async def handle_upload(
+    *,
     file: UploadFile,
-    actor: Annotated[AuthContext, Depends(get_current_actor)],
-    settings: Annotated[Settings, Depends(get_settings)],
-    storage: Annotated[ObjectStorage, Depends(get_storage)],
-    db: Annotated[Session, Depends(get_db)],
-) -> dict[str, str]:
+    actor: AuthContext,
+    settings: Settings,
+    storage: ObjectStorage,
+    db: Session,
+) -> Document:
+    """Shared by the JSON upload endpoint and the dashboard's upload
+    form (apps/web/routes.py) -- reads, validates, stores, and records
+    a new document. Leaves committing the transaction and shaping the
+    response to the caller, since a JSON API and an HTML page need
+    different things back.
+    """
     content = await file.read(settings.max_upload_size_bytes + 1)
     if len(content) > settings.max_upload_size_bytes:
-        raise HTTPException(
-            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
-            detail="File exceeds maximum upload size",
-        )
+        raise UploadTooLargeError()
 
     if _detect_content_type(content) is None:
-        raise HTTPException(
-            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail="Only PDF and image (JPEG/PNG) files are accepted",
-        )
+        raise UnsupportedFileTypeError()
 
     storage_key = f"{actor.tenant_id}/{uuid.uuid4()}_{file.filename or 'upload'}"
     storage.save(key=storage_key, content=content)
@@ -110,8 +118,33 @@ async def upload_document(
     # both are saved together, or (on any earlier failure) neither is --
     # there's no window where a document exists with no processing job.
     enqueue(db, job_type="process_document", payload={"document_id": str(document.id)})
-    db.commit()
+    return document
 
+
+@router.post("", status_code=status.HTTP_201_CREATED)
+async def upload_document(
+    file: UploadFile,
+    actor: Annotated[AuthContext, Depends(get_current_actor)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    storage: Annotated[ObjectStorage, Depends(get_storage)],
+    db: Annotated[Session, Depends(get_db)],
+) -> dict[str, str]:
+    try:
+        document = await handle_upload(
+            file=file, actor=actor, settings=settings, storage=storage, db=db
+        )
+    except UploadTooLargeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+            detail="File exceeds maximum upload size",
+        ) from exc
+    except UnsupportedFileTypeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail="Only PDF and image (JPEG/PNG) files are accepted",
+        ) from exc
+
+    db.commit()
     return {"id": str(document.id), "status": document.status.value}
 
 

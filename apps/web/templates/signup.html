@@ -1,0 +1,22 @@
+{% extends "_base.html" %}
+{% block title %}Sign up — Ascent Review{% endblock %}
+{% block content %}
+<h1>Sign up</h1>
+<p>Placeholder sign-up: creates a new company and user with no
+verification -- see <code>apps/web/auth.py</code>.</p>
+
+{% if error %}
+<p class="error">{{ error }}</p>
+{% endif %}
+
+<form method="post" action="/signup">
+  <p>
+    <label>Email<br><input type="email" name="email" required></label>
+  </p>
+  <p>
+    <label>Company name<br><input type="text" name="company_name" required></label>
+  </p>
+  <button type="submit">Create account</button>
+</form>
+<p>Already have an account? <a href="/login">Log in</a>.</p>
+{% endblock %}

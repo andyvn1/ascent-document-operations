@@ -3,17 +3,25 @@ against a real PostgreSQL database (docker compose up db, then
 alembic upgrade head, before running these).
 """
 
+import shutil
+import tempfile
 import uuid
 from collections.abc import Generator
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from apps.api.main import app
+from apps.api.routes.documents import get_storage
 from ascent.documents.models import Document, DocumentStatus, DocumentType, ExtractedField
+from ascent.documents.storage import LocalFileStorage
 from ascent.shared.db import get_db
 from ascent.shared.models import Tenant, User
+
+FIXTURES = Path(__file__).parent.parent / "fixtures"
 
 
 @pytest.fixture
@@ -30,12 +38,19 @@ def tenant_and_reviewer(db_session: Session) -> tuple[Tenant, User]:
 
 @pytest.fixture
 def client(db_session: Session) -> Generator[TestClient, None, None]:
+    tmp_dir = tempfile.mkdtemp()
+
     def override_get_db() -> Generator[Session, None, None]:
         yield db_session
 
+    def override_get_storage() -> LocalFileStorage:
+        return LocalFileStorage(tmp_dir)
+
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_storage] = override_get_storage
     yield TestClient(app)
     app.dependency_overrides.clear()
+    shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
 @pytest.fixture
@@ -113,6 +128,121 @@ def test_login_submit_sets_cookie_and_redirects(
     assert response.status_code == 303
     assert response.headers["location"] == "/review"
     assert client.cookies.get("user_id") == str(reviewer.id)
+
+
+def test_signup_page_renders(client: TestClient) -> None:
+    response = client.get("/signup")
+
+    assert response.status_code == 200
+    assert "Sign up" in response.text
+
+
+def test_signup_creates_tenant_and_user_and_logs_in(
+    client: TestClient, db_session: Session
+) -> None:
+    response = client.post(
+        "/signup",
+        data={"email": "new-reviewer@newco.test", "company_name": "New Co"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/review"
+
+    user = db_session.scalar(select(User).where(User.email == "new-reviewer@newco.test"))
+    assert user is not None
+    assert client.cookies.get("user_id") == str(user.id)
+
+    tenant = db_session.get(Tenant, user.tenant_id)
+    assert tenant is not None
+    assert tenant.name == "New Co"
+
+
+def test_signup_rejects_an_already_registered_email(
+    client: TestClient, tenant_and_reviewer: tuple[Tenant, User]
+) -> None:
+    _tenant, reviewer = tenant_and_reviewer
+
+    response = client.post(
+        "/signup",
+        # Different case on purpose -- the check is case-insensitive.
+        data={"email": reviewer.email.upper(), "company_name": "Another Co"},
+    )
+
+    assert response.status_code == 409
+    assert "already registered" in response.text
+
+
+def test_signup_allows_two_tenants_with_the_same_company_name(
+    client: TestClient, db_session: Session
+) -> None:
+    # Tenant.name has nothing keyed off it for identity or security --
+    # only the email has to be unique -- so two signups choosing the
+    # same company name must both succeed as two separate tenants.
+    first = client.post(
+        "/signup",
+        data={"email": "first@shared-name.test", "company_name": "Shared Name Inc"},
+        follow_redirects=False,
+    )
+    assert first.status_code == 303
+
+    second = client.post(
+        "/signup",
+        data={"email": "second@shared-name.test", "company_name": "Shared Name Inc"},
+        follow_redirects=False,
+    )
+    assert second.status_code == 303
+
+    tenants = db_session.query(Tenant).filter(Tenant.name == "Shared Name Inc").all()
+    assert len(tenants) == 2
+    assert tenants[0].id != tenants[1].id
+
+
+def test_signup_requires_both_fields(client: TestClient) -> None:
+    response = client.post("/signup", data={"email": "only-email@x.test", "company_name": ""})
+
+    assert response.status_code == 422
+
+
+def test_upload_form_requires_auth(client: TestClient) -> None:
+    response = client.get("/upload", follow_redirects=False)
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/login"
+
+
+def test_upload_pdf_creates_document_and_redirects_to_detail(
+    authenticated_client: TestClient, db_session: Session
+) -> None:
+    with (FIXTURES / "sample-invoice.pdf").open("rb") as f:
+        response = authenticated_client.post(
+            "/upload",
+            files={"file": ("invoice.pdf", f, "application/pdf")},
+            follow_redirects=False,
+        )
+
+    assert response.status_code == 303
+    document_id = response.headers["location"].removeprefix("/review/")
+    document = db_session.get(Document, uuid.UUID(document_id))
+    assert document is not None
+    assert document.original_filename == "invoice.pdf"
+    assert document.status == DocumentStatus.UPLOADED
+
+
+def test_upload_rejects_content_that_is_not_pdf_or_image(
+    authenticated_client: TestClient,
+) -> None:
+    with (FIXTURES / "sample-not-a-document.txt").open("rb") as f:
+        response = authenticated_client.post(
+            "/upload",
+            # Claims to be a PDF via filename/content-type -- the route
+            # must catch this by sniffing actual content, not trust
+            # either (same rule as the JSON upload endpoint).
+            files={"file": ("fake.pdf", f, "application/pdf")},
+        )
+
+    assert response.status_code == 415
+    assert "error" in response.text
 
 
 def test_review_queue_without_cookie_redirects_to_login(client: TestClient) -> None:
