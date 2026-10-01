@@ -21,12 +21,18 @@ import uuid
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from apps.api.routes.documents import (
+    UnsupportedFileTypeError,
+    UploadTooLargeError,
+    get_storage,
+    handle_upload,
+)
 from apps.web.auth import COOKIE_NAME, get_current_web_actor
 from ascent.documents.corrections import (
     DocumentNotInReviewError,
@@ -41,12 +47,14 @@ from ascent.documents.repository import (
     list_extracted_fields,
     list_review_queue,
 )
+from ascent.documents.storage import ObjectStorage
 from ascent.documents.workflow import (
     MissingRejectionCommentError,
     approve_document,
     reject_document,
 )
 from ascent.security.tenancy import AuthContext
+from ascent.shared.config import Settings, get_settings
 from ascent.shared.db import get_db
 from ascent.shared.models import Tenant, User
 
@@ -173,6 +181,50 @@ def logout() -> RedirectResponse:
     response = RedirectResponse(url="/login", status_code=303)
     response.delete_cookie(COOKIE_NAME)
     return response
+
+
+@router.get("/upload", response_class=HTMLResponse)
+def upload_form(
+    request: Request, actor: Annotated[AuthContext, Depends(get_current_web_actor)]
+) -> HTMLResponse:
+    return templates.TemplateResponse(request, "upload.html", {})
+
+
+@router.post("/upload", response_model=None)
+async def upload_submit(
+    request: Request,
+    file: UploadFile,
+    actor: Annotated[AuthContext, Depends(get_current_web_actor)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    storage: Annotated[ObjectStorage, Depends(get_storage)],
+    db: Annotated[Session, Depends(get_db)],
+) -> HTMLResponse | RedirectResponse:
+    """Calls the exact same handle_upload() the JSON API's
+    POST /api/v1/documents uses (apps/api/routes/documents.py) -- this
+    is a second entry point into the same upload logic, not a copy of
+    it, same principle as every other mutating route in this file.
+    """
+    try:
+        document = await handle_upload(
+            file=file, actor=actor, settings=settings, storage=storage, db=db
+        )
+    except UploadTooLargeError:
+        return templates.TemplateResponse(
+            request,
+            "upload.html",
+            {"error": "File exceeds the maximum upload size."},
+            status_code=413,
+        )
+    except UnsupportedFileTypeError:
+        return templates.TemplateResponse(
+            request,
+            "upload.html",
+            {"error": "Only PDF and image (JPEG/PNG) files are accepted."},
+            status_code=415,
+        )
+
+    db.commit()
+    return RedirectResponse(url=f"/review/{document.id}", status_code=303)
 
 
 @router.get("/review", response_class=HTMLResponse)
