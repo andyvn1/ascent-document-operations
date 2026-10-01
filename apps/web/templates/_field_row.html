@@ -1,0 +1,22 @@
+<tr id="field-row-{{ field.field_name }}"
+    class="{% if field.confidence == 0 %}missing{% elif field.confidence < low_confidence_threshold %}low-confidence{% endif %}">
+  <td>{{ field.field_name }}</td>
+  <td>
+    {% if field.is_corrected %}
+      {{ field.corrected_value }}
+      <br><small>was: {{ field.extracted_value if field.extracted_value is not none else "(missing)" }}</small>
+    {% else %}
+      {{ field.extracted_value if field.extracted_value is not none else "(missing)" }}
+    {% endif %}
+  </td>
+  <td>{{ "%.0f%%"|format(field.confidence * 100) }}</td>
+  <td>
+    <form hx-patch="/review/{{ document_id }}/fields/{{ field.field_name }}"
+          hx-target="#field-row-{{ field.field_name }}"
+          hx-swap="outerHTML"
+          class="inline">
+      <input type="text" name="corrected_value" placeholder="correction" size="12">
+      <button type="submit">Save</button>
+    </form>
+  </td>
+</tr>

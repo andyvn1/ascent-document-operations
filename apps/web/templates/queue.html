@@ -1,0 +1,25 @@
+{% extends "_base.html" %}
+{% block title %}Review Queue — Ascent Review{% endblock %}
+{% block content %}
+<h1>Review Queue</h1>
+{% if documents %}
+<table>
+  <thead>
+    <tr><th>Filename</th><th>Type</th><th>Status</th><th>Confidence</th></tr>
+  </thead>
+  <tbody>
+    {% for doc in documents %}
+    <tr>
+      <td><a href="/review/{{ doc.id }}">{{ doc.original_filename }}</a></td>
+      <td>{{ doc.document_type.value }}</td>
+      <td>{{ doc.status.value }}</td>
+      <td>{{ "%.0f%%"|format(doc.confidence * 100) if doc.confidence is not none else "—" }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<p>{{ total }} total document(s).</p>
+{% else %}
+<p>No documents in the queue.</p>
+{% endif %}
+{% endblock %}

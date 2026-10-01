@@ -1,0 +1,44 @@
+{% extends "_base.html" %}
+{% block title %}{{ document.original_filename }} — Ascent Review{% endblock %}
+{% block content %}
+{% set document_id = document.id %}
+<h1>{{ document.original_filename }}</h1>
+<p>Type: {{ document.document_type.value }} &middot; Status: {{ document.status.value }}</p>
+
+{% if error %}
+<p class="error">{{ error }}</p>
+{% endif %}
+
+<div class="columns">
+  <div>
+    <h2>Preview</h2>
+    <iframe class="preview" src="/api/v1/documents/{{ document.id }}/file"></iframe>
+  </div>
+  <div>
+    <h2>Extracted Fields</h2>
+    <table>
+      <thead>
+        <tr><th>Field</th><th>Value</th><th>Confidence</th><th>Correct</th></tr>
+      </thead>
+      <tbody>
+        {% for field in fields %}
+          {% include "_field_row.html" %}
+        {% else %}
+        <tr><td colspan="4">No extracted fields yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% if document.status.value == "in_review" %}
+    <h2>Decision</h2>
+    <form method="post" action="/review/{{ document.id }}/approve" class="inline">
+      <button type="submit">Approve</button>
+    </form>
+    <form method="post" action="/review/{{ document.id }}/reject" class="inline">
+      <input type="text" name="comment" placeholder="Rejection comment (required)" required size="30">
+      <button type="submit">Reject</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
